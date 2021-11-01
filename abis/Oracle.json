@@ -1,0 +1,66 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "Oracle",
+  "sourceName": "contracts/mock/Oracle.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "int256",
+          "name": "_answer",
+          "type": "int256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_decimals",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "answer",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "latestAnswer",
+      "outputs": [
+        {
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b5060405161012b38038061012b8339818101604052604081101561003357600080fd5b5080516020909101516001919091556000805460ff90921660ff1990921691909117905560c6806100656000396000f3fe6080604052348015600f57600080fd5b5060043610603c5760003560e01c8063313ce56714604157806350d25bcd14605d57806385bb7d69146075575b600080fd5b6047607b565b6040805160ff9092168252519081900360200190f35b60636084565b60408051918252519081900360200190f35b6063608a565b60005460ff1681565b60015490565b6001548156fea2646970667358221220d3b7895aff5208a756faca5130454a861df74ecad033f33e9ac9d421bc560f9a64736f6c634300060c0033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b5060043610603c5760003560e01c8063313ce56714604157806350d25bcd14605d57806385bb7d69146075575b600080fd5b6047607b565b6040805160ff9092168252519081900360200190f35b60636084565b60408051918252519081900360200190f35b6063608a565b60005460ff1681565b60015490565b6001548156fea2646970667358221220d3b7895aff5208a756faca5130454a861df74ecad033f33e9ac9d421bc560f9a64736f6c634300060c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
