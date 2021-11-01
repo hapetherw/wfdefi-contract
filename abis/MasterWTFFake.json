@@ -1,0 +1,60 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "MasterWTFFake",
+  "sourceName": "contracts/mock/MasterChefFake.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_cycle",
+          "type": "uint256"
+        }
+      ],
+      "name": "next",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_endBlock",
+          "type": "uint256"
+        }
+      ],
+      "name": "start",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_pid",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_account",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "updateStake",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b5060d78061001f6000396000f3fe6080604052348015600f57600080fd5b5060043610603c5760003560e01c806315c2fdc914604157806395805dad14607f578063edd004e514607f575b600080fd5b607d60048036036060811015605557600080fd5b5080359073ffffffffffffffffffffffffffffffffffffffff60208201351690604001356099565b005b607d60048036036020811015609357600080fd5b5035609e565b505050565b5056fea2646970667358221220e1155a69c4de900b4b2f98fdcab32a7a8d57b9d9d6352df7b991f12fb88162d764736f6c634300060c0033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b5060043610603c5760003560e01c806315c2fdc914604157806395805dad14607f578063edd004e514607f575b600080fd5b607d60048036036060811015605557600080fd5b5080359073ffffffffffffffffffffffffffffffffffffffff60208201351690604001356099565b005b607d60048036036020811015609357600080fd5b5035609e565b505050565b5056fea2646970667358221220e1155a69c4de900b4b2f98fdcab32a7a8d57b9d9d6352df7b991f12fb88162d764736f6c634300060c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
