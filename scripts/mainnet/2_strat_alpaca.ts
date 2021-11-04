@@ -20,6 +20,12 @@ async function main() {
   const alpacaToken = '0x8F0528cE5eF7B51152A59745bEfDD91D97091d2F'
   const pid = 3
 
+  const tokens = {
+    BUSD: '0xe9e7cea3dedca5984780bafc599bd69add087d56',
+    USDT: '0x55d398326f99059ff775485246999027b3197955',
+    TUSD: '0x14016e85a25aeb13065688cafb43044c2ef86784'
+  }
+
   const strat = await StrategyAlpaca.deploy(
     core,
     vault,
@@ -30,6 +36,11 @@ async function main() {
         alpacaToken,
         wbnb,
         busd
+    ],
+    [
+      { token: tokens.BUSD, amount:40 },
+      { token: tokens.USDT, amount:30 },
+      { token: tokens.TUSD, amount:30 }
     ]
   )
   await strat.deployed()
