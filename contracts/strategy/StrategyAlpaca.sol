@@ -15,6 +15,11 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    struct farmStructure {
+        address tokenAddress;
+        uint ratio;
+    }
+
     uint256 public override lastEarnBlock;
 
     address public override uniRouterAddress;
@@ -31,6 +36,8 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
     uint256 public override poolId;
 
     address[] public override earnedToWantPath;
+    
+    farmStructure[] public override alpacaFarms;
 
     event Deposit(address wantAddress, uint256 amountReceived, uint256 amountDeposited);
     event Withdraw(address wantAddress, uint256 amountRequested, uint256 amountWithdrawn);
@@ -41,13 +48,16 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         address _wantAddress,
         address _uniRouterAddress,
         uint256 _poolId,
-        address[] memory _earnedToWantPath
+        address[] memory _earnedToWantPath,
+        farmStructure[] memory _alapacaFarms
     ) public CoreRef(_core) {
         vaultAddress = _vaultAddress;
         wantAddress = _wantAddress;
         poolId = _poolId;
         earnedToWantPath = _earnedToWantPath;
         uniRouterAddress = _uniRouterAddress;
+
+        alpacaFarms = _alapacaFarms;
 
         IERC20(alpacaAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(_wantAddress).safeApprove(uniRouterAddress, uint256(-1));
