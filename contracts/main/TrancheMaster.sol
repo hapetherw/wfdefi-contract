@@ -453,7 +453,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
             total = total.add(t.principal);
         }
 
-        IStrategyToken(strategy).deposit(total, 0);
+        IStrategyToken(strategy).deposit(total);
         actualStartAt = block.timestamp;
         active = true;
         for (uint256 i = 0; i < tranches.length; i++) {
@@ -492,7 +492,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
 
     function _processExit() internal {
         uint256 before = IERC20(currency).balanceOf(address(this));
-        IStrategyToken(strategy).withdraw(IERC20(strategy).balanceOf(address(this)), 0);
+        IStrategyToken(strategy).withdraw();
 
         uint256 total = IERC20(currency).balanceOf(address(this)).sub(before);
         uint256 restCapital = total;

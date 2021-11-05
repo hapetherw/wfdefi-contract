@@ -3,18 +3,15 @@
 pragma solidity >=0.6.0 <0.8.0;
 
 interface IStrategy {
-    function wantLockedTotal() external view returns (uint256);
     function wantLockedInHere() external view returns (uint256);
     function lastEarnBlock() external view returns (uint256);
-    function deposit(uint256 _wantAmt) external returns (uint256);
-    function withdraw(uint256 _wantAmt) external returns (uint256);
+    function deposit(uint256 _wantAmt) external;
+    function withdraw() external;
     function updateStrategy() external;
     function uniRouterAddress() external view returns (address);
     function wantAddress() external view returns (address);
     function earnedToWantPath(uint256 idx) external view returns (address);
-
     function earn() external;
-
     function inCaseTokensGetStuck(address _token, uint256 _amount, address _to) external;
     function setEarnedToWantPath(address[] memory newPath) external;
 }
@@ -30,7 +27,6 @@ interface ILeverageStrategy is IStrategy {
 
 interface IStrategyAlpaca is IStrategy {
     function vaultAddress() external view returns (address);
-    function balanceSnapshot() external view returns (uint256);
     function poolId() external view returns (uint256);
 }
 

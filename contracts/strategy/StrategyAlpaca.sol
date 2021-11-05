@@ -32,15 +32,11 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
 
     address public override vaultAddress;
     address public override wantAddress;
-    uint256 public override balanceSnapshot;
     uint256 public override poolId;
 
     address[] public override earnedToWantPath;
-    
-    farmStructure[] public override alpacaFarms;
 
-    event Deposit(address wantAddress, uint256 amountReceived, uint256 amountDeposited);
-    event Withdraw(address wantAddress, uint256 amountRequested, uint256 amountWithdrawn);
+    farmStructure[] public override alpacaFarms;
 
     constructor(
         address _core,
@@ -58,7 +54,7 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         uniRouterAddress = _uniRouterAddress;
 
         alpacaFarms = _alapacaFarms;
-
+        
         IERC20(alpacaAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(_wantAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(_wantAddress).safeApprove(vaultAddress, uint256(-1));
@@ -68,10 +64,8 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
     function deposit(uint256 _wantAmt)
         public
         override
-        onlyOwner
         nonReentrant
         whenNotPaused
-        returns (uint256)
     {
         IERC20(wantAddress).safeTransferFrom(
             address(msg.sender),
@@ -79,23 +73,11 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
             _wantAmt
         );
 
-        uint256 before = _stakedWantTokens();
-        _deposit(_wantAmt);
-        uint256 diff = _stakedWantTokens().sub(before);
-        if (diff > _wantAmt) {
-            diff = _wantAmt;
-        }
-
-        balanceSnapshot = balanceSnapshot.add(diff);
-
-        emit Deposit(wantAddress, _wantAmt, diff);
-
-        return diff;
+        _deposit(wantLockedInHere());
     }
 
     function _deposit(uint _wantAmt) internal {
         Vault(vaultAddress).deposit(_wantAmt);
-
         FairLaunch(fairLaunchAddress).deposit(address(this), poolId, Vault(vaultAddress).balanceOf(address(this)));
     }
 
@@ -103,7 +85,6 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         FairLaunch(fairLaunchAddress).harvest(poolId);
 
         uint256 earnedAmt = IERC20(alpacaAddress).balanceOf(address(this));
-
         if (alpacaAddress != wantAddress) {
             IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 earnedAmt,
@@ -114,53 +95,37 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
             );
         }
 
-        earnedAmt = IERC20(wantAddress).balanceOf(address(this));
+        earnedAmt = wantLockedInHere();
         if (earnedAmt != 0) {
             _deposit(earnedAmt);
         }
-        balanceSnapshot = _stakedWantTokens();
 
         lastEarnBlock = block.number;
     }
 
-    function withdraw(uint256 _wantAmt)
+    function withdraw()
         public
         override
         onlyOwner
         nonReentrant
-        returns (uint256)
     {
-        uint wantBal;
-        if (_wantAmt > wantLockedInHere()) {
-            balanceSnapshot = balanceSnapshot.sub(_wantAmt.sub(
-                wantLockedInHere()
-            ));
-            _withdraw(_wantAmt.sub(
-                wantLockedInHere()
-            ));
-        }
-
-        wantBal = IERC20(wantAddress).balanceOf(address(this));
-        if (wantBal > _wantAmt) {
-            wantBal = _wantAmt;
-        }
-
-        IERC20(wantAddress).safeTransfer(owner(), wantBal);
-
-        emit Withdraw(wantAddress, _wantAmt, wantBal);
-
-        return wantBal;
-    }
-
-    function _withdraw(uint256 _wantAmt) internal {
-        uint256 amount = _wantAmt.mul(Vault(vaultAddress).totalSupply()).div(Vault(vaultAddress).totalToken());
-        FairLaunch(fairLaunchAddress).withdraw(address(this), poolId, amount);
-        Vault(vaultAddress).withdraw(Vault(vaultAddress).balanceOf(address(this)));
-    }
-
-    function _stakedWantTokens() public view returns (uint256) {
         (uint256 _amount, , ,) = FairLaunch(fairLaunchAddress).userInfo(poolId, address(this));
-        return _amount.mul(Vault(vaultAddress).totalToken()).div(Vault(vaultAddress).totalSupply());
+        FairLaunch(fairLaunchAddress).withdraw(address(this), poolId, _amount);
+        Vault(vaultAddress).withdraw(Vault(vaultAddress).balanceOf(address(this)));
+
+        uint256 earnedAmt = IERC20(alpacaAddress).balanceOf(address(this));
+        if (alpacaAddress != wantAddress && earnedAmt != 0) {
+            IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
+                earnedAmt,
+                0,
+                earnedToWantPath,
+                address(this),
+                now.add(600)
+            );
+        }
+
+        uint256 balance = wantLockedInHere();
+        IERC20(wantAddress).safeTransfer(owner(), balance);
     }
 
     function _pause() override internal {
@@ -175,10 +140,6 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         IERC20(alpacaAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(wantAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(wantAddress).safeApprove(vaultAddress, uint256(-1));
-    }
-
-    function wantLockedTotal() public view override returns (uint256) {
-        return wantLockedInHere().add(balanceSnapshot);
     }
 
     function wantLockedInHere() public view override returns (uint256) {
