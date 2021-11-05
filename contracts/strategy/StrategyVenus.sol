@@ -33,9 +33,6 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
 
     bool public override isComp;
 
-    event Deposit(address wantAddress, uint256 amountReceived, uint256 amountDeposited);
-    event Withdraw(address wantAddress, uint256 amountRequested, uint256 amountWithdrawn);
-
     constructor(
         address _core,
         address _wantAddress,
@@ -85,14 +82,10 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
     function deposit(uint256 _wantAmt)
         public
         override
-        onlyOwner
         nonReentrant
         whenNotPaused
-        returns (uint256)
     {
         (uint256 sup, uint256 brw, ) = updateBalance();
-
-        uint prevBalance = wantLockedInHere().add(sup).sub(brw);
 
         IERC20(wantAddress).safeTransferFrom(
             address(msg.sender),
@@ -101,16 +94,6 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
         );
 
         _supply(wantLockedInHere());
-
-        (sup, brw, ) = updateBalance();
-        uint diffBalance = wantLockedInHere().add(sup).sub(brw).sub(prevBalance);
-        if (diffBalance > _wantAmt) {
-            diffBalance = _wantAmt;
-        }
-
-        emit Deposit(wantAddress, _wantAmt, diffBalance);
-
-        return diffBalance;
     }
 
     function leverage(uint256 _amount) public override onlyTimelock {
@@ -167,43 +150,56 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
         }
 
         uint256 earnedAmt = IERC20(earnedAddress).balanceOf(address(this));
-        if (earnedAmt != 0) {
-            if (earnedAddress != wantAddress) {
-                IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
-                    earnedAmt,
-                    0,
-                    earnedToWantPath,
-                    address(this),
-                    now.add(600)
-                );
-            }
+        if (earnedAddress != wantAddress && earnedAmt != 0) {
+            IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
+                earnedAmt,
+                0,
+                earnedToWantPath,
+                address(this),
+                now.add(600)
+            );
         }
 
-        lastEarnBlock = block.number;
         earnedAmt = wantLockedInHere();
         if (earnedAmt != 0) {
             _supply(earnedAmt);
         }
+
+        lastEarnBlock = block.number;
     }
 
-    function withdraw(uint256 _wantAmt)
+    function withdraw()
         public
         override
         onlyOwner
         nonReentrant
-        returns (uint256)
     {
-        _withdraw(_wantAmt);
+        _withdraw();
+
+        if (isComp) {
+            IVenusDistribution(distributionAddress).claimComp(address(this));
+        } else {
+            IVenusDistribution(distributionAddress).claimVenus(address(this));
+        }
+
+        uint256 earnedAmt = IERC20(earnedAddress).balanceOf(address(this));
+        if (earnedAddress != wantAddress && earnedAmt != 0) {
+            IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
+                earnedAmt,
+                0,
+                earnedToWantPath,
+                address(this),
+                now.add(600)
+            );
+        }
 
         uint256 wantBal = wantLockedInHere();
         IERC20(wantAddress).safeTransfer(owner(), wantBal);
-
-        emit Withdraw(wantAddress, _wantAmt, wantBal);
-        return wantBal;
     }
 
-    function _withdraw(uint256 _wantAmt) internal {
+    function _withdraw() internal {
     	(uint256 sup, uint256 brw, uint256 supMin) = updateBalance();
+        uint256 _wantAmt = sup.sub(brw);
         uint256 delevAmtAvail = sup.sub(supMin);
         while (_wantAmt > delevAmtAvail) {
             if (delevAmtAvail > brw) {
@@ -247,7 +243,7 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
         supMin = brw.mul(1000).div(borrowRate);
     }
 
-    function wantLockedTotal() public view override returns (uint256) {
+    function wantLockedTotal() public view returns (uint256) {
         (uint256 sup, uint256 brw, ) = updateBalance();
         return wantLockedInHere().add(sup).sub(brw);
     }
