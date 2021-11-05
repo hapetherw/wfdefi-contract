@@ -53,8 +53,9 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         earnedToWantPath = _earnedToWantPath;
         uniRouterAddress = _uniRouterAddress;
 
+        require(_alapacaFarms.length == 3, "array not match");
         alpacaFarms = _alapacaFarms;
-        
+
         IERC20(alpacaAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(_wantAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(_wantAddress).safeApprove(vaultAddress, uint256(-1));
@@ -77,6 +78,23 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
     }
 
     function _deposit(uint _wantAmt) internal {
+        uint wantBUSD = _wantAmt * alpacaFarms[0].ratio / 100;
+        uint wantUSDT = _wantAmt * alpacaFarms[1].ratio / 100;
+        uint wantTUSD = _wantAmt * alpacaFarms[2].ratio / 100;
+        IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
+                wantUSDT,
+                0,
+                [alpacaFarms[0].token, alpacaFarms[1].token],
+                address(this),
+                now.add(600)
+            );
+        IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
+                wantTUSD,
+                0,
+                [alpacaFarms[0].token, alpacaFarms[2].token],
+                address(this),
+                now.add(600)
+            );    
         Vault(vaultAddress).deposit(_wantAmt);
         FairLaunch(fairLaunchAddress).deposit(address(this), poolId, Vault(vaultAddress).balanceOf(address(this)));
     }
