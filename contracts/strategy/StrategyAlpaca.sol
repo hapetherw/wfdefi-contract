@@ -32,7 +32,6 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
 
     address public override vaultAddress;
     address public override wantAddress;
-    uint256 public override poolId;
 
     address[] public override earnedToWantPath;
 
@@ -43,13 +42,11 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         address _vaultAddress,
         address _wantAddress,
         address _uniRouterAddress,
-        uint256 _poolId,
         address[] memory _earnedToWantPath,
         farmStructure[] memory _alapacaFarms
     ) public CoreRef(_core) {
         vaultAddress = _vaultAddress;
         wantAddress = _wantAddress;
-        poolId = _poolId;
         earnedToWantPath = _earnedToWantPath;
         uniRouterAddress = _uniRouterAddress;
 
@@ -94,13 +91,19 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
                 [alpacaFarms[0].token, alpacaFarms[2].token],
                 address(this),
                 now.add(600)
-            );    
+            );
         Vault(vaultAddress).deposit(_wantAmt);
-        FairLaunch(fairLaunchAddress).deposit(address(this), poolId, Vault(vaultAddress).balanceOf(address(this)));
+        FairLaunch(fairLaunchAddress).deposit(address(this), alpacaFarms[0].pid, Vault(vaultAddress).balanceOf(address(this)));
+        Vault(vaultAddress).deposit(_wantAmt);
+        FairLaunch(fairLaunchAddress).deposit(address(this), alpacaFarms[1].pid, Vault(vaultAddress).balanceOf(address(this)));
+        Vault(vaultAddress).deposit(_wantAmt);
+        FairLaunch(fairLaunchAddress).deposit(address(this), alpacaFarms[2].pid, Vault(vaultAddress).balanceOf(address(this)));
     }
 
     function earn() public override whenNotPaused onlyTimelock {
-        FairLaunch(fairLaunchAddress).harvest(poolId);
+        FairLaunch(fairLaunchAddress).harvest(alpacaFarms[0].pid);
+        FairLaunch(fairLaunchAddress).harvest(alpacaFarms[1].pid);
+        FairLaunch(fairLaunchAddress).harvest(alpacaFarms[2].pid);
 
         uint256 earnedAmt = IERC20(alpacaAddress).balanceOf(address(this));
         if (alpacaAddress != wantAddress) {

@@ -27,7 +27,7 @@ interface ILeverageStrategy is IStrategy {
 
 interface IStrategyAlpaca is IStrategy {
     function vaultAddress() external view returns (address);
-    function poolId() external view returns (uint256);
+    function poolIds() external view returns (uint256[] memory poolIds);
 }
 
 interface IStrategyVenus is ILeverageStrategy {

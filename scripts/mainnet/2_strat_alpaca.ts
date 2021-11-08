@@ -18,7 +18,6 @@ async function main() {
   const busd = '0xe9e7cea3dedca5984780bafc599bd69add087d56'
   const pancakeRouter = '0x10ED43C718714eb63d5aA57B78B54704E256024E'
   const alpacaToken = '0x8F0528cE5eF7B51152A59745bEfDD91D97091d2F'
-  const pid = 3
 
   const tokens = {
     BUSD: '0xe9e7cea3dedca5984780bafc599bd69add087d56',
@@ -31,16 +30,15 @@ async function main() {
     vault,
     busd,
     pancakeRouter,
-    pid,
     [
         alpacaToken,
         wbnb,
         busd
     ],
     [
-      { token: tokens.BUSD, ratio:40 },
-      { token: tokens.USDT, ratio:30 },
-      { token: tokens.TUSD, ratio:30 }
+      { token: tokens.BUSD, ratio:40, pid:3 },
+      { token: tokens.USDT, ratio:30, pid:16  },
+      { token: tokens.TUSD, ratio:30, pid:20  }
     ]
   )
   await strat.deployed()
