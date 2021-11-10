@@ -102,9 +102,9 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
             );
         Vault(vaultAddress).deposit(wantBUSD);
         FairLaunch(fairLaunchAddress).deposit(address(this), alpacaFarms[0].pid, Vault(vaultAddress).balanceOf(address(this)));
-        Vault(vaultAddress).deposit(wantUSDT);
+        Vault(vaultAddress).deposit(reserveUSDT);
         FairLaunch(fairLaunchAddress).deposit(address(this), alpacaFarms[1].pid, Vault(vaultAddress).balanceOf(address(this)));
-        Vault(vaultAddress).deposit(wantTUSD);
+        Vault(vaultAddress).deposit(reserveTUSD);
         FairLaunch(fairLaunchAddress).deposit(address(this), alpacaFarms[2].pid, Vault(vaultAddress).balanceOf(address(this)));
     }
 
