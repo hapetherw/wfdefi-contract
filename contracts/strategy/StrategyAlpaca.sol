@@ -81,11 +81,11 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         uint reserveUSDT = IPancakeRouter02(uniRouterAddress).getAmountsOut(
             wantUSDT,
             [alpacaFarms[0].token, alpacaFarms[1].token]
-        )[0];
+        )[1];
         uint reserveTUSD = IPancakeRouter02(uniRouterAddress).getAmountsOut(
             wantTUSD,
             [alpacaFarms[0].token, alpacaFarms[2].token]
-        )[0];
+        )[1];
         IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 wantUSDT,
                 reserveUSDT,
