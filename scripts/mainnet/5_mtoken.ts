@@ -22,9 +22,9 @@ async function main() {
       strategies.creamStrat
     ],
     [
-      40,
-      30,
-      30
+      50,
+      50,
+      0
     ]
   )
   await mtoken.deployed()

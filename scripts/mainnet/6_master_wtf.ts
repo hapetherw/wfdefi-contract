@@ -15,7 +15,7 @@ async function main() {
   const master = await MasterWTF.deploy(
     core,
     wtf,
-    '1000000000000000',
+    '0',
     0,
     0,
     [

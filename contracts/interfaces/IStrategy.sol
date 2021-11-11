@@ -14,6 +14,7 @@ interface IStrategy {
     function earn() external;
     function inCaseTokensGetStuck(address _token, uint256 _amount, address _to) external;
     function setEarnedToWantPath(address[] memory newPath) external;
+    function setSlippage(uint256 _slippage) external; 
 }
 
 interface ILeverageStrategy is IStrategy {

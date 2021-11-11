@@ -16,6 +16,7 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    uint256 private slippage = 5; // 1000 = 100%
     uint256 public override lastEarnBlock;
 
     address public override wantAddress;
@@ -51,7 +52,7 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
         earnedAddress = _earnedAddress;
         distributionAddress = _distributionAddress;
         vTokenAddress = _vTokenAddress;
-        markets = [ vTokenAddress ];
+        markets = [vTokenAddress];
         uniRouterAddress = _uniRouterAddress;
 
         isComp = _isComp;
@@ -79,19 +80,10 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
         require(IVToken(vTokenAddress).repayBorrow(_amount) == 0, "repayBorrow Err");
     }
 
-    function deposit(uint256 _wantAmt)
-        public
-        override
-        nonReentrant
-        whenNotPaused
-    {
+    function deposit(uint256 _wantAmt) public override nonReentrant whenNotPaused {
         (uint256 sup, uint256 brw, ) = updateBalance();
 
-        IERC20(wantAddress).safeTransferFrom(
-            address(msg.sender),
-            address(this),
-            _wantAmt
-        );
+        IERC20(wantAddress).safeTransferFrom(address(msg.sender), address(this), _wantAmt);
 
         _supply(wantLockedInHere());
     }
@@ -104,9 +96,7 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
         updateStrategy();
         (uint256 sup, uint256 brw, ) = updateBalance();
 
-        require(
-            brw.add(_amount).mul(1000).div(borrowRate) <= sup, "ltv too high"
-        );
+        require(brw.add(_amount).mul(1000).div(borrowRate) <= sup, "ltv too high");
         _borrow(_amount);
         _supply(wantLockedInHere());
     }
@@ -151,9 +141,14 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
 
         uint256 earnedAmt = IERC20(earnedAddress).balanceOf(address(this));
         if (earnedAddress != wantAddress && earnedAmt != 0) {
+            uint256 amountWantWithoutSlippage = IPancakeRouter02(uniRouterAddress).getAmountsOut(
+                earnedAmt,
+                earnedToWantPath
+            )[earnedToWantPath.length - 1];
+            uint256 amountWantWithSlippage = amountWantWithoutSlippage.mul(1000 - slippage).div(1000);
             IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 earnedAmt,
-                0,
+                amountWantWithSlippage,
                 earnedToWantPath,
                 address(this),
                 now.add(600)
@@ -168,12 +163,7 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
         lastEarnBlock = block.number;
     }
 
-    function withdraw()
-        public
-        override
-        onlyOwner
-        nonReentrant
-    {
+    function withdraw() public override onlyOwner nonReentrant {
         _withdraw();
 
         if (isComp) {
@@ -184,9 +174,15 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
 
         uint256 earnedAmt = IERC20(earnedAddress).balanceOf(address(this));
         if (earnedAddress != wantAddress && earnedAmt != 0) {
+            uint256 amountWantWithoutSlippage = IPancakeRouter02(uniRouterAddress).getAmountsOut(
+                earnedAmt,
+                earnedToWantPath
+            )[earnedToWantPath.length - 1];
+            uint256 amountWantWithSlippage = amountWantWithoutSlippage.mul(1000 - slippage).div(1000);
+
             IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 earnedAmt,
-                0,
+                amountWantWithSlippage,
                 earnedToWantPath,
                 address(this),
                 now.add(600)
@@ -198,7 +194,7 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
     }
 
     function _withdraw() internal {
-    	(uint256 sup, uint256 brw, uint256 supMin) = updateBalance();
+        (uint256 sup, uint256 brw, uint256 supMin) = updateBalance();
         uint256 _wantAmt = sup.sub(brw);
         uint256 delevAmtAvail = sup.sub(supMin);
         while (_wantAmt > delevAmtAvail) {
@@ -221,22 +217,33 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
         _removeSupply(_wantAmt);
     }
 
-    function _pause() override internal {
+    function _pause() internal override {
         super._pause();
         IERC20(earnedAddress).safeApprove(uniRouterAddress, 0);
         IERC20(wantAddress).safeApprove(uniRouterAddress, 0);
         IERC20(wantAddress).safeApprove(vTokenAddress, 0);
     }
 
-    function _unpause() override internal {
+    function _unpause() internal override {
         super._unpause();
         IERC20(earnedAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(wantAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(wantAddress).safeApprove(vTokenAddress, uint256(-1));
     }
 
-    function updateBalance() public view override returns (uint256 sup, uint256 brw, uint256 supMin) {
-        (uint256 errCode, uint256 _sup, uint256 _brw, uint exchangeRate) = IVToken(vTokenAddress).getAccountSnapshot(address(this));
+    function updateBalance()
+        public
+        view
+        override
+        returns (
+            uint256 sup,
+            uint256 brw,
+            uint256 supMin
+        )
+    {
+        (uint256 errCode, uint256 _sup, uint256 _brw, uint256 exchangeRate) = IVToken(vTokenAddress).getAccountSnapshot(
+            address(this)
+        );
         require(errCode == 0, "Venus ErrCode");
         sup = _sup.mul(exchangeRate).div(1e18);
         brw = _brw;
@@ -250,6 +257,12 @@ contract StrategyVenus is IStrategyVenus, ReentrancyGuard, Ownable, CoreRef {
 
     function wantLockedInHere() public view override returns (uint256) {
         return IERC20(wantAddress).balanceOf(address(this));
+    }
+
+    function setSlippage(uint256 _slippage) public override onlyTimelock {
+        require(_slippage > 0, "Slippage should be greater than zero");
+        require(_slippage <= 5, "Slippage is too high");
+        slippage = _slippage;
     }
 
     function inCaseTokensGetStuck(

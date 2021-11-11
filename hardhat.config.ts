@@ -11,7 +11,7 @@ export default {
     hardhat: {
     },
     mainnet: {
-      url: 'https://bsc-dataseed.binance.org',
+      url: 'https://bsc-dataseed1.defibit.io/',
       accounts: [ PRIVATE_KEY ],
       chainId: 56,
       gas: 6990000,
@@ -24,6 +24,10 @@ export default {
       gas: 6990000,
       gasPrice: 10000000000
     }
+  },
+  etherscan: {
+    // BSC Scan
+    apiKey: process.env.BSCSCAN_API,
   },
   solidity: {
     version: "0.6.12",

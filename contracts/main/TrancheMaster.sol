@@ -10,6 +10,7 @@ import "../refs/CoreRef.sol";
 import "../interfaces/ITrancheMaster.sol";
 import "../interfaces/IMasterWTF.sol";
 import "../interfaces/IStrategyToken.sol";
+import "../interfaces/IFeeRewards.sol";
 
 contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
     using SafeMath for uint256;
@@ -71,42 +72,17 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
     // cycle => trancheID => snapshot
     mapping(uint256 => mapping(uint256 => TrancheSnapshot)) public override trancheSnapshots;
 
-    event Deposit(
-        address account,
-        uint256 amount
-    );
+    event Deposit(address account, uint256 amount);
 
-    event Invest(
-        address account,
-        uint256 tid,
-        uint256 cycle,
-        uint256 amount
-    );
+    event Invest(address account, uint256 tid, uint256 cycle, uint256 amount);
 
-    event Redeem(
-        address account,
-        uint256 tid,
-        uint256 cycle,
-        uint256 amount
-    );
+    event Redeem(address account, uint256 tid, uint256 cycle, uint256 amount);
 
-    event Withdraw(
-        address account,
-        uint256 amount
-    );
+    event Withdraw(address account, uint256 amount);
 
-    event WithdrawFee(
-        address account,
-        uint256 amount
-    );
+    event WithdrawFee(address account, uint256 amount);
 
-    event Harvest(
-        address account,
-        uint256 tid,
-        uint256 cycle,
-        uint256 principal,
-        uint256 capital
-    );
+    event Harvest(address account, uint256 tid, uint256 cycle, uint256 principal, uint256 capital);
 
     event TrancheAdd(uint256 tid, uint256 target, uint256 apy, uint256 fee);
 
@@ -114,22 +90,13 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
 
     event TrancheStart(uint256 tid, uint256 cycle, uint256 principal);
 
-    event TrancheSettle(
-        uint256 tid,
-        uint256 cycle,
-        uint256 principal,
-        uint256 capital,
-        uint256 rate
-    );
+    event TrancheSettle(uint256 tid, uint256 cycle, uint256 principal, uint256 capital, uint256 rate);
 
     event SetDevAddress(address dev);
 
-    modifier checkTranches {
+    modifier checkTranches() {
         require(tranches.length > 1, "tranches is incomplete");
-        require(
-            tranches[tranches.length - 1].apy == 0,
-            "the last tranche must carry zero apy"
-        );
+        require(tranches[tranches.length - 1].apy == 0, "the last tranche must carry zero apy");
         _;
     }
 
@@ -138,17 +105,17 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         _;
     }
 
-    modifier checkActive {
+    modifier checkActive() {
         require(active, "not active");
         _;
     }
 
-    modifier checkNotActive {
+    modifier checkNotActive() {
         require(!active, "already active");
         _;
     }
 
-    modifier updateInvest {
+    modifier updateInvest() {
         _updateInvest(_msgSender());
         _;
     }
@@ -171,16 +138,12 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         approveToken();
 
         for (uint256 i = 0; i < _params.length; i++) {
-            _add(
-                _params[i].target,
-                _params[i].apy,
-                _params[i].fee
-            );
+            _add(_params[i].target, _params[i].apy, _params[i].fee);
         }
     }
 
     function approveToken() public {
-        IERC20(currency).safeApprove(strategy, uint(-1));
+        IERC20(currency).safeApprove(strategy, uint256(-1));
     }
 
     function setDuration(uint256 _duration) public override onlyGovernor {
@@ -201,12 +164,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         require(apy <= MaxAPY, "invalid APY");
         require(fee <= MaxFee, "invalid fee");
         tranches.push(
-            Tranche({
-                target: target,
-                apy: apy.mul(PercentageScale).div(PercentageParamScale),
-                fee: fee,
-                principal: 0
-            })
+            Tranche({target: target, apy: apy.mul(PercentageScale).div(PercentageParamScale), fee: fee, principal: 0})
         );
         emit TrancheAdd(tranches.length - 1, target, apy, fee);
     }
@@ -224,12 +182,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         uint256 target,
         uint256 apy,
         uint256 fee
-    )
-        public
-        override
-        onlyTimelock
-        checkTrancheID(tid)
-    {
+    ) public override onlyTimelock checkTrancheID(tid) {
         require(target >= tranches[tid].principal, "invalid target");
         require(apy <= MaxAPY, "invalid APY");
         require(fee <= MaxFee, "invalid fee");
@@ -258,12 +211,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         }
     }
 
-    function balanceOf(address account)
-        public
-        view
-        override
-        returns (uint256 balance, uint256 invested)
-    {
+    function balanceOf(address account) public view override returns (uint256 balance, uint256 invested) {
         UserInfo storage u = userInfo[account];
         balance = u.balance;
         for (uint256 i = 0; i < tranches.length; i++) {
@@ -280,13 +228,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         }
     }
 
-    function getInvest(uint256 tid)
-        public
-        view
-        override
-        checkTrancheID(tid)
-        returns (uint256)
-    {
+    function getInvest(uint256 tid) public view override checkTrancheID(tid) returns (uint256) {
         Investment storage inv = userInvest[msg.sender][tid];
         if (inv.cycle < cycle) {
             return 0;
@@ -312,14 +254,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         uint256 amountIn,
         uint256 tid,
         uint256 amountInvest
-    )
-        public
-        override
-        checkTrancheID(tid)
-        checkNotActive
-        updateInvest
-        nonReentrant
-    {
+    ) public override checkTrancheID(tid) checkNotActive updateInvest nonReentrant {
         require(amountIn > 0, "invalid amountIn");
         require(amountInvest > 0, "invalid amountInvest");
 
@@ -333,12 +268,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         _invest(tid, amountInvest, false);
     }
 
-    function deposit(uint256 amount)
-        public
-        override
-        updateInvest
-        nonReentrant
-    {
+    function deposit(uint256 amount) public override updateInvest nonReentrant {
         require(amount > 0, "invalid amount");
         UserInfo storage u = userInfo[msg.sender];
         IERC20(currency).safeTransferFrom(msg.sender, address(this), amount);
@@ -350,14 +280,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         uint256 tid,
         uint256 amount,
         bool returnLeft
-    )
-        public
-        override
-        checkTrancheID(tid)
-        checkNotActive
-        updateInvest
-        nonReentrant
-    {
+    ) public override checkTrancheID(tid) checkNotActive updateInvest nonReentrant {
         require(amount > 0, "invalid amount");
         _invest(tid, amount, returnLeft);
     }
@@ -366,8 +289,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         uint256 tid,
         uint256 amount,
         bool returnLeft
-    ) private
-    {
+    ) private {
         UserInfo storage u = userInfo[msg.sender];
         require(amount <= u.balance, "balance not enough");
 
@@ -391,14 +313,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         _tryStart();
     }
 
-    function redeem(uint256 tid)
-        public
-        override
-        checkTrancheID(tid)
-        checkNotActive
-        updateInvest
-        nonReentrant
-    {
+    function redeem(uint256 tid) public override checkTrancheID(tid) checkNotActive updateInvest nonReentrant {
         _redeem(tid);
     }
 
@@ -417,14 +332,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         return principal;
     }
 
-    function redeemDirect(uint256 tid)
-        public
-        override
-        checkTrancheID(tid)
-        checkNotActive
-        updateInvest
-        nonReentrant
-    {
+    function redeemDirect(uint256 tid) public override checkTrancheID(tid) checkNotActive updateInvest nonReentrant {
         uint256 amount = _redeem(tid);
         UserInfo storage u = userInfo[msg.sender];
         u.balance = u.balance.sub(amount);
@@ -432,12 +340,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         emit Withdraw(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount)
-        public
-        override
-        updateInvest
-        nonReentrant
-    {
+    function withdraw(uint256 amount) public override updateInvest nonReentrant {
         require(amount > 0, "invalid amount");
         UserInfo storage u = userInfo[msg.sender];
         require(amount <= u.balance, "balance not enough");
@@ -470,23 +373,13 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
         IMasterWTF(staker).next(cycle);
     }
 
-    function _calculateExchangeRate(uint256 current, uint256 base)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _calculateExchangeRate(uint256 current, uint256 base) internal pure returns (uint256) {
         if (current == base) {
             return PercentageScale;
         } else if (current > base) {
-            return
-                PercentageScale.add(
-                    (current - base).mul(PercentageScale).div(base)
-                );
+            return PercentageScale.add((current - base).mul(PercentageScale).div(base));
         } else {
-            return
-                PercentageScale.sub(
-                    (base - current).mul(PercentageScale).div(base)
-                );
+            return PercentageScale.sub((base - current).mul(PercentageScale).div(base));
         }
     }
 
@@ -506,13 +399,9 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
             Tranche storage senior = tranches[i];
             principal = senior.principal;
             capital = 0;
-            interestShouldBe = senior
-                .principal
-                .mul(senior.apy)
-                .mul(_now - actualStartAt)
-                .div(365)
-                .div(86400)
-                .div(PercentageScale);
+            interestShouldBe = senior.principal.mul(senior.apy).mul(_now - actualStartAt).div(365).div(86400).div(
+                PercentageScale
+            );
 
             uint256 all = principal.add(interestShouldBe);
             bool satisfied = restCapital >= all;
@@ -544,13 +433,7 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
 
             senior.principal = 0;
 
-            emit TrancheSettle(
-                i,
-                cycle,
-                principal,
-                capital,
-                cycleExchangeRate
-            );
+            emit TrancheSettle(i, cycle, principal, capital, cycleExchangeRate);
         }
 
         uint256 juniorIndex = tranches.length - 1;
@@ -574,21 +457,10 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
 
         junior.principal = 0;
 
-        emit TrancheSettle(
-            juniorIndex,
-            cycle,
-            principal,
-            capital,
-            cycleExchangeRate
-        );
+        emit TrancheSettle(juniorIndex, cycle, principal, capital, cycleExchangeRate);
     }
 
-    function stop()
-        public
-        override
-        checkActive
-        nonReentrant
-    {
+    function stop() public override checkActive nonReentrant {
         _stopCycle();
     }
 
@@ -599,5 +471,11 @@ contract TrancheMaster is ITrancheMaster, CoreRef, ReentrancyGuard {
             IERC20(currency).safeTransfer(devAddress, amount);
             emit WithdrawFee(devAddress, amount);
         }
+    }
+
+    function transferFeeToStaking(uint256 _amount, address _pool) public override onlyGovernor {
+        require(_amount > 0, "Zero amount");
+        IERC20(currency).safeApprove(_pool, _amount);
+        IFeeRewards(_pool).sendRewards(_amount);
     }
 }
