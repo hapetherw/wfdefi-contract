@@ -1,9 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env' });
 import { ethers } from "hardhat"
 import { load, save } from "../utils"
 import { keccak256 } from "@ethersproject/keccak256"
-
 const MASTER_ROLE = keccak256(Buffer.from("MASTER_ROLE", 'utf-8'))
-
+const multisig = process.env.MULTISIG
 async function main() {
   const [ owner ] = await ethers.getSigners()
 
@@ -18,30 +19,30 @@ async function main() {
   const core = await Core.attach(coreAddress)
 
   const busd = '0xe9e7cea3dedca5984780bafc599bd69add087d56'
-  const duration = 600
+  const duration = 10800
 
   const trancheMaster = await TrancheMaster.deploy(
-    core,
+    coreAddress,
     busd,
     mtoken.mBUSD,
     masterWTF,
-    owner.address,
+    multisig,
     duration,
     [
       {
-        target: '600000000000000000',
-        apy: 4760,
-        fee: 0
+        target: '6000000000000000000000',
+        apy: 7080,
+        fee: 33
       },
       {
-        target: '300000000000000000',
-        apy: 7140,
-        fee: 0
+        target: '3000000000000000000000',
+        apy: 10620,
+        fee: 50
       },
       {
-        target: '100000000000000000',
+        target: '1000000000000000000000',
         apy: 0,
-        fee: 0
+        fee: 200
       }
     ]
   )

@@ -4,9 +4,10 @@ import { ethers } from "hardhat"
 
 async function load(name: string) {
   try {
-    const data = await fs.readFileSync(`${process.cwd()}/addresses/${ethers.provider.network.chainId}.${name}.json`)
+    const data = await fs.readFileSync(`${process.cwd()}/addresses/56.${name}.json`)
     return JSON.parse(data.toString())
   } catch (e) {
+    console.log(e)
     return null
   }
 }

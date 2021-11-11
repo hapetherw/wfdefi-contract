@@ -49,6 +49,8 @@ interface ITrancheMaster {
 
     function withdrawFee(uint256 amount) external;
 
+    function transferFeeToStaking(uint256 _amount, address _pool) external;
+
     function producedFee() external view returns (uint256);
 
     function duration() external view returns (uint256);
@@ -59,12 +61,15 @@ interface ITrancheMaster {
 
     function active() external view returns (bool);
 
-    function tranches(uint256 id) external view returns(
-        uint256 target,
-        uint256 principal,
-        uint256 apy,
-        uint256 fee
-    );
+    function tranches(uint256 id)
+        external
+        view
+        returns (
+            uint256 target,
+            uint256 principal,
+            uint256 apy,
+            uint256 fee
+        );
 
     function currency() external view returns (address);
 
@@ -76,19 +81,19 @@ interface ITrancheMaster {
 
     function userInfo(address account) external view returns (uint256);
 
-    function userInvest(address account, uint256 tid) external view returns (
-        uint256 cycle,
-        uint256 principal
-    );
+    function userInvest(address account, uint256 tid) external view returns (uint256 cycle, uint256 principal);
 
-    function trancheSnapshots(uint256 cycle, uint256 tid) external view returns (
-        uint256 target,
-        uint256 principal,
-        uint256 capital,
-        uint256 rate,
-        uint256 apy,
-        uint256 fee,
-        uint256 startAt,
-        uint256 stopAt
-    );
+    function trancheSnapshots(uint256 cycle, uint256 tid)
+        external
+        view
+        returns (
+            uint256 target,
+            uint256 principal,
+            uint256 capital,
+            uint256 rate,
+            uint256 apy,
+            uint256 fee,
+            uint256 startAt,
+            uint256 stopAt
+        );
 }

@@ -15,6 +15,8 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    uint256 private slippage = 5; // 1000 = 100%
+
     struct farmStructure {
         address tokenAddress;
         uint ratio;
@@ -82,20 +84,22 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
             wantUSDT,
             [alpacaFarms[0].token, alpacaFarms[1].token]
         )[1];
+        uint reserveUSDTSlippage = reserveUSDT.mul(1000 - slippage).div(1000);
         uint reserveTUSD = IPancakeRouter02(uniRouterAddress).getAmountsOut(
             wantTUSD,
             [alpacaFarms[0].token, alpacaFarms[2].token]
         )[1];
+        uint reserveTUSDSlippage = reserveTUSD.mul(1000 - slippage).div(1000);
         IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 wantUSDT,
-                reserveUSDT,
+                reserveTUSDSlippage,
                 [alpacaFarms[0].token, alpacaFarms[1].token],
                 address(this),
                 now.add(600)
             );
         IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 wantTUSD,
-                reserveTUSD,
+                reserveUSDTSlippage,
                 [alpacaFarms[0].token, alpacaFarms[2].token],
                 address(this),
                 now.add(600)
@@ -114,10 +118,15 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         FairLaunch(fairLaunchAddress).harvest(alpacaFarms[2].pid);
 
         uint256 earnedAmt = IERC20(alpacaAddress).balanceOf(address(this));
-        if (alpacaAddress != wantAddress) {
+        if (alpacaAddress != wantAddress && earnedAmt != 0) {
+            uint256 amountWantWithoutSlippage = IPancakeRouter02(uniRouterAddress).getAmountsOut(
+                earnedAmt,
+                earnedToWantPath
+            )[earnedToWantPath.length - 1];
+            uint256 amountWantWithSlippage = amountWantWithoutSlippage.mul(1000 - slippage).div(1000);
             IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 earnedAmt,
-                0,
+                amountWantWithSlippage,
                 earnedToWantPath,
                 address(this),
                 now.add(600)
@@ -144,9 +153,14 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
 
         uint256 earnedAmt = IERC20(alpacaAddress).balanceOf(address(this));
         if (alpacaAddress != wantAddress && earnedAmt != 0) {
+            uint256 amountWantWithoutSlippage = IPancakeRouter02(uniRouterAddress).getAmountsOut(
+                earnedAmt,
+                earnedToWantPath
+            )[earnedToWantPath.length - 1];
+            uint256 amountWantWithSlippage = amountWantWithoutSlippage.mul(1000 - slippage).div(1000);
             IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 earnedAmt,
-                0,
+                amountWantWithSlippage,
                 earnedToWantPath,
                 address(this),
                 now.add(600)
@@ -157,14 +171,14 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         IERC20(wantAddress).safeTransfer(owner(), balance);
     }
 
-    function _pause() override internal {
+    function _pause() internal override {
         super._pause();
         IERC20(alpacaAddress).safeApprove(uniRouterAddress, 0);
         IERC20(wantAddress).safeApprove(uniRouterAddress, 0);
         IERC20(wantAddress).safeApprove(vaultAddress, 0);
     }
 
-    function _unpause() override internal {
+    function _unpause() internal override {
         super._unpause();
         IERC20(alpacaAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(wantAddress).safeApprove(uniRouterAddress, uint256(-1));
@@ -173,6 +187,12 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
 
     function wantLockedInHere() public view override returns (uint256) {
         return IERC20(wantAddress).balanceOf(address(this));
+    }
+
+    function setSlippage(uint256 _slippage) public override onlyTimelock {
+        require(_slippage > 0, "Slippage should be greater than zero");
+        require(_slippage <= 5, "Slippage is too high");
+        slippage = _slippage;
     }
 
     function inCaseTokensGetStuck(
