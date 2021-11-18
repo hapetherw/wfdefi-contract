@@ -36,9 +36,19 @@ async function main() {
         busd
     ],
     [
-      { token: tokens.BUSD, ratio:40, pid:3 },
-      { token: tokens.USDT, ratio:30, pid:16  },
-      { token: tokens.TUSD, ratio:30, pid:20  }
+      tokens.BUSD,
+      tokens.USDT,
+      tokens.TUSD
+    ],
+    [
+      40,
+      30,
+      30
+    ],
+    [
+      3,
+      16,
+      20
     ]
   )
   await strat.deployed()
