@@ -17,9 +17,10 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
 
     uint256 private slippage = 5; // 1000 = 100%
 
-    struct farmStructure {
+    struct FarmStructure {
         address tokenAddress;
         uint ratio;
+        uint pid;
     }
 
     uint256 public override lastEarnBlock;
@@ -37,7 +38,7 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
 
     address[] public override earnedToWantPath;
 
-    farmStructure[] public override alpacaFarms;
+    FarmStructure[] public alpacaFarms;
 
     constructor(
         address _core,
@@ -45,15 +46,30 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         address _wantAddress,
         address _uniRouterAddress,
         address[] memory _earnedToWantPath,
-        farmStructure[] memory _alapacaFarms
+        address[] memory _farmAddress,
+        uint[] memory _ratioArray,
+        uint[] memory _pidArray
     ) public CoreRef(_core) {
         vaultAddress = _vaultAddress;
         wantAddress = _wantAddress;
         earnedToWantPath = _earnedToWantPath;
         uniRouterAddress = _uniRouterAddress;
 
-        require(_alapacaFarms.length == 3, "array not match");
-        alpacaFarms = _alapacaFarms;
+        alpacaFarms.push(FarmStructure({
+            tokenAddress: _farmAddress[0],
+            ratio: _ratioArray[0],
+            pid: _pidArray[0]
+        }));
+        alpacaFarms.push(FarmStructure({
+            tokenAddress: _farmAddress[1],
+            ratio: _ratioArray[1],
+            pid: _pidArray[1]
+        }));
+        alpacaFarms.push(FarmStructure({
+            tokenAddress: _farmAddress[2],
+            ratio: _ratioArray[2],
+            pid: _pidArray[2]
+        }));
 
         IERC20(alpacaAddress).safeApprove(uniRouterAddress, uint256(-1));
         IERC20(_wantAddress).safeApprove(uniRouterAddress, uint256(-1));
@@ -80,27 +96,33 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         uint wantBUSD = _wantAmt * alpacaFarms[0].ratio / 100;
         uint wantUSDT = _wantAmt * alpacaFarms[1].ratio / 100;
         uint wantTUSD = _wantAmt * alpacaFarms[2].ratio / 100;
+        address[] memory reserveUSDTAry = new address[](2);
+        reserveUSDTAry[0] = alpacaFarms[0].tokenAddress;
+        reserveUSDTAry[1] = alpacaFarms[1].tokenAddress;
+        address[] memory reserveTUSDAry = new address[](2);
+        reserveTUSDAry[0] = alpacaFarms[0].tokenAddress;
+        reserveTUSDAry[1] = alpacaFarms[2].tokenAddress;
         uint reserveUSDT = IPancakeRouter02(uniRouterAddress).getAmountsOut(
             wantUSDT,
-            [alpacaFarms[0].token, alpacaFarms[1].token]
+            reserveUSDTAry
         )[1];
         uint reserveUSDTSlippage = reserveUSDT.mul(1000 - slippage).div(1000);
         uint reserveTUSD = IPancakeRouter02(uniRouterAddress).getAmountsOut(
             wantTUSD,
-            [alpacaFarms[0].token, alpacaFarms[2].token]
+            reserveTUSDAry
         )[1];
         uint reserveTUSDSlippage = reserveTUSD.mul(1000 - slippage).div(1000);
         IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 wantUSDT,
                 reserveTUSDSlippage,
-                [alpacaFarms[0].token, alpacaFarms[1].token],
+                reserveUSDTAry,
                 address(this),
                 now.add(600)
             );
         IPancakeRouter02(uniRouterAddress).swapExactTokensForTokens(
                 wantTUSD,
                 reserveUSDTSlippage,
-                [alpacaFarms[0].token, alpacaFarms[2].token],
+                reserveTUSDAry,
                 address(this),
                 now.add(600)
             );
@@ -147,8 +169,12 @@ contract StrategyAlpaca is IStrategyAlpaca, ReentrancyGuard, Ownable, CoreRef {
         onlyOwner
         nonReentrant
     {
-        (uint256 _amount, , ,) = FairLaunch(fairLaunchAddress).userInfo(poolId, address(this));
-        FairLaunch(fairLaunchAddress).withdraw(address(this), poolId, _amount);
+        (uint256 _amount0, , ,) = FairLaunch(fairLaunchAddress).userInfo(alpacaFarms[0].pid, address(this));
+        FairLaunch(fairLaunchAddress).withdraw(address(this), alpacaFarms[0].pid, _amount0);
+        (uint256 _amount1, , ,) = FairLaunch(fairLaunchAddress).userInfo(alpacaFarms[1].pid, address(this));
+        FairLaunch(fairLaunchAddress).withdraw(address(this), alpacaFarms[1].pid, _amount1);
+        (uint256 _amount2, , ,) = FairLaunch(fairLaunchAddress).userInfo(alpacaFarms[2].pid, address(this));
+        FairLaunch(fairLaunchAddress).withdraw(address(this), alpacaFarms[2].pid, _amount2);
         Vault(vaultAddress).withdraw(Vault(vaultAddress).balanceOf(address(this)));
 
         uint256 earnedAmt = IERC20(alpacaAddress).balanceOf(address(this));
