@@ -96,12 +96,12 @@ describe("TrancheMaster unit test", () => {
     await busd.mint(owner.address, 30000)
     await core.grantRole(MASTER_ROLE, trancheMaster.address)
     await core.grantRole(TIMELOCK_ROLE, timelock.address)
-    /*
+    
     await chef.add(10)
     await chef.add(20)
     await chef.add(30)
     await wtf.mint(chef.address, "10000000000000000000000")
-    */
+    
   })
 
   describe("deposit", () => {
